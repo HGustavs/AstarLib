@@ -1,0 +1,294 @@
+<html>
+	
+<head>
+   <style>
+   </style>
+   
+   <script src="HSH_Procedural.js"></script>
+   
+   <script> 
+			var TILENOX=25;
+			var TILENOY=25;
+			var tiles=new Array();
+
+			var startX=5;
+			var startY=7;
+			var goalX=17;
+			var goalY=18;
+
+			var ctx;
+			var imagesafe=false;
+			var acanvas;
+			var tx,ty;
+
+   		function go(){
+
+						for(i=0;i<TILENOY;i++){
+								tiles[i]=new Array();
+								for(j=0;j<TILENOX;j++){
+										tiles[i][j]={"coordX":i, "coordY":j, "gScore":10000,"fScore":0, "kind":0, "tileno":0 };
+								}						
+						}
+
+						var ttx=0;
+						var tty=0;
+						var ct=0;
+						var yu=3;
+
+						var ttxa=0;
+						var ttya=1;
+						
+						for(j=0;j<30;j++){		
+								yu=Math.round(Math.random()*7);
+								
+								for(i=0;i<yu;i++){
+										ttx+=ttxa;
+										tty+=ttya;
+										if(ttx<=2||ttx>=(TILENOX-2)) ttx=1+Math.round((TILENOX-2)*Math.random());
+										if(tty<=2||tty>=(TILENOY-2)) tty=1+Math.round((TILENOY-2)*Math.random());
+										tiles[ttx][tty].kind=4;
+								}
+
+								tft=Math.floor(Math.random()*2.0);
+								if(tft==0) {
+									ct++;
+								}else{
+									ct--;
+								}
+								if(ct==-1) ct=3;
+								if(ct==4) ct=0;
+																							
+								if(ct==0) {ttxa=1; ttya=0;};
+								if(ct==1) {ttxa=0; ttya=1;};
+								if(ct==2) {ttxa=-1; ttya=0;};
+								if(ct==3) {ttxa=0; ttya=-1;};
+						}								
+
+						tiles[startY][startX].kind=-1;
+						tiles[goalY][goalX].kind=-1;
+						
+						for(i=1;i<TILENOY-1;i++){
+								for(j=1;j<TILENOX-1;j++){
+										tiles[i][j].tileno=1;
+										if(tiles[i][j].kind==4) tiles[i][j].tileno=2;
+								}
+						}
+						
+						// Tiles
+						for(i=0;i<TILENOY;i++){
+								tiles[0][i].kind=4;
+								tiles[TILENOY-1][i].kind=4;
+								tiles[i][0].kind=4;
+								tiles[i][TILENOX-1].kind=4;
+						}
+																								
+						for(i=2;i<TILENOY-2;i++){
+								tiles[0][i].tileno=10;
+								tiles[i][0].tileno=9;
+								tiles[i][TILENOX-1].tileno=8;
+								tiles[TILENOY-1][i].tileno=11;
+						}
+												
+						tiles[1][1].tileno=7;						
+						tiles[TILENOY-2][1].tileno=5;												
+						tiles[1][TILENOX-2].tileno=6;												
+						tiles[TILENOY-2][TILENOX-2].tileno=4;	
+						
+   	  }
+   	  
+			function drawtiles()
+			{
+					var img=document.getElementById("imgy");
+
+						for(i=0;i<TILENOY;i++){
+								for(j=0;j<TILENOX;j++){
+										tilecoord=tiles[i][j].tileno*16;
+										ctx.drawImage(img,tilecoord,0,16,16,20+(j*16),20+(i*16),16,16);
+								}						
+						}			
+			}
+
+			function imageloaded()
+			{
+					go();
+					initcanvas();
+					
+					drawtiles();
+
+					aStarSearch();
+					drawGrid();
+			}        
+   	  
+   	  
+   	  function makeNode(xk,yk,fathx,fathy,cost)
+   	  {
+   	  		return {"coordX":xk,"coordY":yk,"fathX":fathx,"fathY":fathy,"cost":cost}
+   	  }
+   	  
+   	  function Heuristic(currX,currY,goalX,goalY)
+   	  {
+   	  		var dist=Math.abs(currX-goalX)+Math.abs(currY-goalY);
+   	  		return dist;
+   	  }
+   	  
+   	  function checkTile(tileX,tileY,fathX,fathY,gScore)
+   	  {
+          var tentative=gScore+1;
+          var fScore;
+
+          // if neighbor in closedset continue
+ 	 				if(tiles[tileY][tileX].kind<3){
+
+					    // if neighbor not in openset or tentative_g_score < g_score[neighbor] 
+							if(tiles[tileY][tileX].kind<=0||tentative<tiles[tileY][tileX].gScore){
+								
+					        // g_score[neighbor] := tentative_g_score
+									tiles[tileY][tileX].gScore=tentative;
+					        // f_score[neighbor] := g_score[neighbor] + heuristic_cost_estimate(neighbor, goal)
+									fScore=tentative+Heuristic(tileX,tileY,goalX,goalY);
+									tiles[tileY][tileX].fScore=fScore;
+
+					        // add neighbor to openset
+									HSHPush(fScore,makeNode(tileX,tileY,fathX,fathY,gScore));
+									tiles[tileY][tileX].kind=1;									
+							}
+ 	 				}   	  		
+   	  }
+   	  
+   	  function aStarSearch()
+   	  {
+     			var gScore=0;
+     			var fScore=Heuristic(startX,startY,goalX,goalY);
+   	  		
+   	  		currnode=makeNode(startX,startY,startX,startY,0);
+   	  		while(currnode!=undefined){
+   	  				
+					    // add current to closedset
+   	  				tiles[currnode.coordY][currnode.coordX].kind=3;
+   	  				tiles[currnode.coordY][currnode.coordX].fathX=currnode.fathX;
+   	  				tiles[currnode.coordY][currnode.coordX].fathY=currnode.fathY;
+
+   	  				// Add new tile to list
+   	  				checkTile(currnode.coordX+1,currnode.coordY,currnode.coordX,currnode.coordY,gScore);
+   	  				checkTile(currnode.coordX-1,currnode.coordY,currnode.coordX,currnode.coordY,gScore);
+   	  				checkTile(currnode.coordX,currnode.coordY+1,currnode.coordX,currnode.coordY,gScore);
+   	  				checkTile(currnode.coordX,currnode.coordY-1,currnode.coordX,currnode.coordY,gScore);
+   	  				
+   	  				if(currnode.coordX==goalX&&currnode.coordY==goalY) break; 
+
+					    // remove current from openset
+   	  				currnode=HSHPop();
+   	  				
+   	  				drawGrid();
+   	  				//alert("H");
+   	  		}
+
+  				if(currnode==undefined){
+  						alert("Not found");
+  				}else if(currnode.coordX==goalX&&currnode.coordY==goalY){							
+							var rx,ry;
+							
+							rx=goalX;
+							ry=goalY;
+							
+							while(!(startX==rx&&startY==ry)){
+									rx=tiles[ry][rx].fathX;
+									ry=tiles[ry][rx].fathY;
+									tiles[ry][rx].kind=2;							
+							}
+
+							drawGrid();
+							
+							startX=goalX;
+							startY=goalY;
+   				}  
+   	  		     			
+   	  }
+   	  
+   	  function drawGrid()
+   	  {
+						for(i=0;i<TILENOY;i++){
+								for(j=0;j<TILENOX;j++){
+										if(tiles[i][j].kind==1){
+ 												ctx.strokeStyle="#00AA00";										
+										}else if(tiles[i][j].kind==2){
+ 												ctx.strokeStyle="#AA00EE";										
+										}else if(tiles[i][j].kind==3){
+ 												ctx.strokeStyle="#EEAA00";										
+										}else if(tiles[i][j].kind==4){
+ 												ctx.strokeStyle="#00EEAA";										
+										}else if(tiles[i][j].kind==-1){
+ 												ctx.strokeStyle="#EE4499";										
+										}else{
+ 												ctx.strokeStyle="#FFFFFF";
+										}
+										
+										if((tiles[i][j].kind>0)&&(tiles[i][j].kind<4)) ctx.strokeRect(20+(j*16),20+(i*16),15,15);
+								}						
+						}
+  	  
+   	  }
+   	  
+      function initcanvas()
+      {
+      		acanvas = document.getElementById("myCanvas");
+        	if (acanvas.getContext) {
+          		ctx = acanvas.getContext("2d");
+            	ctx.strokeRect(18,18,402,402);
+        	}
+    	} 
+
+			function mousemoveevt(ev, t)
+			{
+					var cx,cy=0;
+					if (ev.layerX||ev.layerX==0) { // Firefox
+					    cx=ev.layerX-acanvas.offsetLeft;
+					    cy=ev.layerY-acanvas.offsetTop;
+					} else if (ev.offsetX || ev.offsetX == 0) { // Opera
+					    cx=ev.offsetX-acanvas.offsetLeft;
+					    cy=ev.offsetY-acanvas.offsetTop;
+					}
+					
+					cx-=20;
+					cy-=20;
+					
+					//alert(coord.x+" "+coord.y);
+					
+					tx=Math.floor(cx/16.0);
+					ty=Math.floor(cy/16.0);
+			} 
+			
+			function clicker()
+			{
+					HSHClear();
+					for(i=1;i<TILENOY-1;i++){
+							for(j=1;j<TILENOX-1;j++){
+									if(tiles[i][j].kind!=4) tiles[i][j].kind=0;
+									tiles[i][j].gScore=10000;
+									tiles[i][j].fScore=0;
+							}
+					}
+					
+					if(tiles[startY][startX].kind==0){
+							goalX=tx;
+							goalY=ty;
+							tiles[goalY][goalX].kind=-1;
+							tiles[startY][startX].kind=-1;
+							
+							
+							drawtiles();
+							aStarSearch();
+							drawGrid();
+					}
+					
+			}
+        
+   </script>
+
+</head>
+<body onload="">
+	<canvas id="myCanvas" width="600" height="600" onmousemove="mousemoveevt(event,this);" onclick="clicker();">
+ 	<img style="display:none;" id="imgy" src="Tileset.png" onload="imageloaded();">
+</body>
+</html>
+
